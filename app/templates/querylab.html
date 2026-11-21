@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% block title %}Query lab{% endblock %}
+{% block body %}
+<h1>Query lab</h1>
+<p class="sub">All 26 queries from <code>03_queries.sql</code>, loaded straight from the file. Open one and press <b>Run</b> to execute it against the live database.</p>
+
+{% set ns = namespace(g='') %}
+{% for q in queries %}
+  {% if q.group != ns.g %}{% set ns.g = q.group %}<h2 style="margin:22px 0 10px">{{ q.group }}</h2>{% endif %}
+  <details>
+    <summary><span class="qid">Q{{ q.id }}</span> {{ q.title }}</summary>
+    <div class="inner">
+      {% if q.notes %}<p class="muted" style="margin:0">{{ q.notes }}</p>{% endif %}
+      <pre class="sql">{{ q.sql }}</pre>
+      <button class="sm" onclick="runQ({{ q.id }}, this)">&#9654; Run</button>
+      <div id="out{{ q.id }}" style="margin-top:12px"></div>
+    </div>
+  </details>
+{% endfor %}
+
+<script>
+async function runQ(id, btn) {
+  const out = document.getElementById('out' + id);
+  btn.disabled = true; out.innerHTML = '<span class="muted">Running…</span>';
+  const r = await (await fetch('/api/query/' + id, {method: 'POST'})).json();
+  btn.disabled = false;
+  if (r.error) { out.innerHTML = '<div class="warn"></div>'; out.firstChild.textContent = r.error; return; }
+  out.innerHTML = '';
+  r.results.forEach(t => {
+    const w = document.createElement('div'); w.className = 'scroll'; w.style.marginBottom = '10px';
+    const tb = document.createElement('table');
+    const hr = tb.createTHead().insertRow();
+    t.cols.forEach(c => { const th = document.createElement('th'); th.textContent = c; hr.appendChild(th); });
+    const body = tb.createTBody();
+    t.rows.forEach(row => { const tr = body.insertRow(); row.forEach(v => tr.insertCell().textContent = v); });
+    if (!t.rows.length) { const tr = body.insertRow(); const td = tr.insertCell(); td.colSpan = Math.max(t.cols.length,1); td.className = 'muted'; td.textContent = 'No rows returned.'; }
+    w.appendChild(tb); out.appendChild(w);
+    const n = document.createElement('div'); n.className = 'muted'; n.style.fontSize = '12px'; n.textContent = t.rows.length + ' row(s)'; out.appendChild(n);
+  });
+}
+</script>
+{% endblock %}

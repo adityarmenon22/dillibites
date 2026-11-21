@@ -1,0 +1,21 @@
+{% macro table(cols, rows) %}
+<div class="scroll"><table>
+  <thead><tr>{% for c in cols %}<th>{{ c }}</th>{% endfor %}</tr></thead>
+  <tbody>
+  {% for r in rows %}<tr>{% for v in r %}<td>{{ v }}</td>{% endfor %}</tr>
+  {% else %}<tr><td colspan="{{ cols|length }}" class="muted">No rows.</td></tr>{% endfor %}
+  </tbody>
+</table></div>
+{% endmacro %}
+
+{% macro bars(items) %}{# items: list of (label, value, display) #}
+  {% set mx = items|map(attribute=1)|map('float')|max if items else 1 %}
+  {% for label, val, disp in items %}
+  <div class="bar"><div class="n" title="{{ label }}">{{ label }}</div>
+    <div class="t"><div class="f" style="width:{{ (100*(val|float)/(mx or 1))|round(1) }}%"></div></div>
+    <div class="val">{{ disp }}</div></div>
+  {% endfor %}
+{% endmacro %}
+
+{% macro status(s) %}<span class="badge b-{{ s }}">{{ s.replace('_',' ') }}</span>{% endmacro %}
+{% macro veg(v) %}<span class="{{ 'veg' if v else 'nonveg' }}" title="{{ 'Veg' if v else 'Non-veg' }}"></span>{% endmacro %}

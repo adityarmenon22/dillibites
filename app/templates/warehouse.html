@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% from "macros.html" import table %}
+{% block title %}Warehouse{% endblock %}
+{% block body %}
+<h1>Data warehouse</h1>
+<p class="sub">A separate schema <code>dillibites_dw</code> (star schema, loaded by ETL from the operational tables) built only for analytics.</p>
+
+<div class="card">
+  <h2>Star schema</h2>
+  <svg viewBox="0 0 760 330" width="100%" role="img" aria-label="Star schema: fact_orders in the centre joined to dim_date, dim_customer, dim_restaurant, dim_partner and dim_payment">
+    <g font-family="Segoe UI,system-ui,sans-serif" font-size="13" text-anchor="middle">
+      <g stroke="var(--brand)" stroke-width="2">
+        <line x1="380" y1="165" x2="130" y2="55"/><line x1="380" y1="165" x2="380" y2="50"/>
+        <line x1="380" y1="165" x2="630" y2="55"/><line x1="380" y1="165" x2="170" y2="275"/><line x1="380" y1="165" x2="590" y2="275"/>
+      </g>
+      <rect x="290" y="120" width="180" height="90" rx="12" fill="var(--brand)"/>
+      <text x="380" y="153" fill="#fff" font-weight="800" font-size="16">fact_orders</text>
+      <text x="380" y="175" fill="#fff">grain: 1 delivered order</text>
+      <text x="380" y="194" fill="#fff" opacity=".85">{{ counts.fact_orders }} rows</text>
+      {% for x,y,n,c in [(130,55,'dim_date',counts.dim_date),(380,50,'dim_customer',counts.dim_customer),(630,55,'dim_restaurant',counts.dim_restaurant),(170,275,'dim_partner',counts.dim_partner),(590,275,'dim_payment',counts.dim_payment)] %}
+      <rect x="{{ x-70 }}" y="{{ y-24 }}" width="140" height="48" rx="10" fill="var(--brand-soft)" stroke="var(--brand)"/>
+      <text x="{{ x }}" y="{{ y-2 }}" fill="var(--ink)" font-weight="700">{{ n }}</text>
+      <text x="{{ x }}" y="{{ y+15 }}" fill="var(--muted)" font-size="12">{{ c }} rows</text>
+      {% endfor %}
+      <rect x="305" y="268" width="150" height="48" rx="10" fill="none" stroke="var(--muted)" stroke-dasharray="5 4"/>
+      <text x="380" y="288" fill="var(--ink)" font-weight="700">dim_area</text>
+      <text x="380" y="305" fill="var(--muted)" font-size="12">snowflake split · {{ counts.dim_area }} rows</text>
+    </g>
+  </svg>
+</div>
+
+{% for o in out %}
+<div class="card">
+  <h2>{{ o.title }}</h2>
+  {{ table(o.cols, o.rows) }}
+  <details style="margin:12px 0 0"><summary>Show SQL</summary><div class="inner"><pre class="sql">{{ o.sql }}</pre></div></details>
+</div>
+{% endfor %}
+{% endblock %}

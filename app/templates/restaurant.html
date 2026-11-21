@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% from "macros.html" import veg %}
+{% block title %}{{ r.name }}{% endblock %}
+{% block body %}
+<p><a href="{{ url_for('restaurants') }}">&larr; All restaurants</a></p>
+<h1>{{ r.name }}</h1>
+<p class="sub">{{ r.cuisine }} · {{ r.area_name }}, {{ r.city }} · {{ r.opens_at|fmt }} to {{ r.closes_at|fmt }}{% if r.serves_after_midnight %} · open past midnight{% endif %}</p>
+<div class="grid g4" style="margin-bottom:16px">
+  <div class="card kpi"><div class="v">{{ r.total_orders }}</div><div class="l">Orders</div></div>
+  <div class="card kpi"><div class="v">{{ r.revenue|inr }}</div><div class="l">Delivered revenue</div></div>
+  <div class="card kpi"><div class="v">{{ r.avg_rating|fmt }} ★</div><div class="l">Average rating</div></div>
+  <div class="card kpi"><div class="v" style="font-size:16px">{% for t in top %}{{ t.item_name }} ({{ t.qty }}){% if not loop.last %}<br>{% endif %}{% else %}-{% endfor %}</div><div class="l">Best sellers</div></div>
+</div>
+<div class="card">
+  <h2>Menu</h2>
+  {% set ns = namespace(cat='') %}
+  {% for m in menu %}
+    {% if m.category_name != ns.cat %}{% set ns.cat = m.category_name %}<div class="cat">{{ ns.cat }}</div>{% endif %}
+    <div class="menu-row" style="grid-template-columns:1fr auto">
+      <div>{{ veg(m.is_veg) }}{{ m.item_name }}{% if m.stock_qty is not none %} <span class="badge">{{ m.stock_qty }} left today</span>{% endif %}<br><span class="muted" style="font-size:12px">{{ m.description }}</span></div>
+      <div><b>{{ m.price|inr }}</b></div>
+    </div>
+  {% endfor %}
+</div>
+{% endblock %}

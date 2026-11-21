@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+{% block title %}Place order{% endblock %}
+{% block body %}
+<h1>Place an order</h1>
+<p class="sub">Calls <code>sp_place_order</code> &rarr; <code>sp_add_item</code> (row-locks limited stock) &rarr; <code>sp_checkout</code> (all-or-nothing transaction). Every rule below is enforced by the database, not by this page.</p>
+
+<form method="post" id="f">
+<div class="grid g2">
+  <div class="card">
+    <h2>1. Who and where</h2>
+    <div style="margin-bottom:12px"><label>Customer</label>
+      <select name="customer" id="cust" style="width:100%" required>
+        <option value="">Choose customer…</option>
+        {% for c in customers %}<option value="{{ c.customer_id }}">{{ c.full_name }} (wallet {{ c.wallet_balance|inr }})</option>{% endfor %}
+      </select></div>
+    <div style="margin-bottom:12px"><label>Delivery address</label><select name="address" id="addr" style="width:100%" required><option value="">Choose customer first</option></select></div>
+    <div style="margin-bottom:12px"><label>Restaurant</label>
+      <select name="restaurant" id="rest" style="width:100%" required>
+        <option value="">Choose restaurant…</option>
+        {% for r in rests %}<option value="{{ r.restaurant_id }}">{{ r.name }} · {{ r.cuisine }}</option>{% endfor %}
+      </select></div>
+    <div class="row">
+      <div><label>Coupon</label>
+        <select name="coupon"><option value="">No coupon</option>
+          {% for c in coupons %}<option value="{{ c.code }}">{{ c.code }} · {{ c.discount_pct }}% off (max {{ c.max_discount|inr }}, min {{ c.min_order_value|inr }}, {{ c.max_uses_per_customer }}x per customer)</option>{% endfor %}
+        </select></div>
+      <div><label>Payment</label>
+        <select name="method"><option>UPI</option><option>CARD</option><option>COD</option><option>WALLET</option></select></div>
+    </div>
+    <p class="muted" style="font-size:12px;margin:12px 0 0">Things to try: pick <b>Rohan Mehta + WELCOME50</b> (trigger blocks coupon reuse), or pay by <b>WALLET</b> with Aarav (balance 0, checkout rolls back), or order Mutton Biryani repeatedly (limited stock).</p>
+    <div style="margin-top:16px"><button type="submit">Place order</button></div>
+  </div>
+
+  <div class="card">
+    <h2>2. Menu</h2>
+    <div id="menu" class="muted">Pick a restaurant to load its menu.</div>
+  </div>
+</div>
+</form>
+
+<script>
+const $ = id => document.getElementById(id);
+$('cust').onchange = async () => {
+  const a = $('addr'); a.innerHTML = '';
+  if (!$('cust').value) { a.innerHTML = '<option value="">Choose customer first</option>'; return; }
+  const rows = await (await fetch('/api/addresses/' + $('cust').value)).json();
+  rows.forEach(r => a.add(new Option(`${r.label}: ${r.address_line} (${r.area_name})`, r.address_id)));
+};
+$('rest').onchange = async () => {
+  const m = $('menu');
+  if (!$('rest').value) { m.innerHTML = 'Pick a restaurant to load its menu.'; return; }
+  const items = await (await fetch('/api/menu/' + $('rest').value)).json();
+  let html = '', cat = '';
+  items.forEach(i => {
+    if (i.category_name !== cat) { cat = i.category_name; html += `<div class="cat">${cat}</div>`; }
+    const stock = i.stock_qty !== null ? ` <span class="badge">${i.stock_qty} left</span>` : '';
+    html += `<div class="menu-row ${i.is_available ? '' : 'off'}">
+      <div><span class="${i.is_veg ? 'veg' : 'nonveg'}"></span>${i.item_name}${stock}<br><span class="muted" style="font-size:12px">${i.description || ''}</span></div>
+      <div>Rs ${i.price.toFixed(0)}</div>
+      <input type="number" min="0" max="20" value="0" name="qty_${i.item_id}" ${i.is_available ? '' : 'disabled'}></div>`;
+  });
+  m.className = ''; m.innerHTML = html;
+};
+</script>
+{% endblock %}

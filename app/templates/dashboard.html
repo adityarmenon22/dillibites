@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% from "macros.html" import table, bars %}
+{% block title %}Dashboard{% endblock %}
+{% block body %}
+<h1>Dashboard</h1>
+<p class="sub">Live numbers from the operational (OLTP) database, using views, window functions and CTEs.</p>
+
+<div class="grid g4" style="margin-bottom:16px">
+  <div class="card kpi"><div class="v">{{ kpi.revenue|inr }}</div><div class="l">Delivered revenue</div></div>
+  <div class="card kpi"><div class="v">{{ kpi.total_orders }}</div><div class="l">Total orders · {{ kpi.active }} active · {{ kpi.cancelled }} cancelled</div></div>
+  <div class="card kpi"><div class="v">{{ kpi.aov|inr }}</div><div class="l">Average order value</div></div>
+  <div class="card kpi"><div class="v">{{ rating.r }} ★</div><div class="l">{{ rating.n }} reviews · {{ customers }} customers</div></div>
+</div>
+
+<div class="grid g2" style="margin-bottom:16px">
+  <div class="card">
+    <h2>Revenue by restaurant</h2>
+    {{ bars(rest_bars) }}
+  </div>
+  <div class="card">
+    <h2>Orders by hour of day</h2>
+    {% set mx = hours|map(attribute='n')|max %}
+    <div class="cols">{% for h in hours %}<div style="height:{{ (100*h.n/mx)|round }}%" data-t="{{ h.h }}:00 · {{ h.n }} orders"></div>{% endfor %}</div>
+    <div class="axis">{% for h in hours %}<span>{{ h.h }}</span>{% endfor %}</div>
+    <h2 style="margin-top:22px">Month-on-month revenue</h2>
+    {{ table(['Month','Revenue','Growth vs previous'], monthly_rows) }}
+  </div>
+</div>
+
+<div class="grid g3">
+  <div class="card"><h2>Restaurant scorecard</h2>
+    <div class="scroll"><table><thead><tr><th>Name</th><th class="num">Orders</th><th class="num">Rating</th><th class="num">Cancelled</th></tr></thead>
+    {% for r in rest %}<tr><td>{{ r.name }}</td><td class="num">{{ r.total_orders }}</td><td class="num">{{ r.avg_rating|fmt }}</td><td class="num">{{ r.cancelled_orders }}</td></tr>{% endfor %}</table></div>
+  </div>
+  <div class="card"><h2>Delivery partner leaderboard</h2>
+    <div class="scroll"><table><thead><tr><th>#</th><th>Partner</th><th class="num">Trips</th><th class="num">Avg min</th></tr></thead>
+    {% for p in partners|sort(attribute='speed_rank') %}<tr><td>{{ p.speed_rank }}</td><td>{{ p.partner }}</td><td class="num">{{ p.trips }}</td><td class="num">{{ p.avg_min }}</td></tr>{% endfor %}</table></div>
+    <h2 style="margin-top:20px">High-value customers</h2>
+    <div class="scroll"><table>{% for c in hv %}<tr><td>{{ c.full_name }}</td><td class="num">{{ c.orders }} orders</td><td class="num">{{ c.total_spent|inr }}</td></tr>{% endfor %}</table></div>
+  </div>
+  <div class="card"><h2>Open past midnight</h2>
+    <div class="scroll"><table>{% for l in late %}<tr><td><b>{{ l.name }}</b><br><span class="muted">{{ l.cuisine }} · {{ l.area_name }}</span></td><td class="num">{{ l.opens_at|fmt }} to {{ l.closes_at|fmt }}</td></tr>{% endfor %}</table></div>
+    <p class="muted" style="font-size:12px">From view <code>v_late_night_restaurants</code> (uses a generated column).</p>
+  </div>
+</div>
+{% endblock %}

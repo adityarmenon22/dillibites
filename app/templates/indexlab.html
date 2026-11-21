@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% block title %}Index lab{% endblock %}
+{% block body %}
+<h1>Index lab</h1>
+<p class="sub">File 07 live: builds a 200,000-row table with no secondary index, times a query, adds a B-tree index, times it again.</p>
+
+<div class="card">
+  <form method="post" action="{{ url_for('indexlab_run') }}" onsubmit="this.querySelector('button').textContent='Building 200,000 rows…'">
+    <button>&#9654; Run the scale test</button>
+    <span class="muted" style="margin-left:10px">Takes a few seconds. Creates and drops a scratch table <code>orders_big</code>.</span>
+  </form>
+</div>
+
+{% if result %}
+<div class="card">
+  <h2>Result</h2>
+  <pre class="sql" style="margin-top:0">{{ result.probe }}</pre>
+  <div class="compare">
+    <div>
+      <div class="tag">Before: no index</div>
+      <div class="big" style="color:var(--err)">{{ result.before_ms }} ms</div>
+      <pre class="sql" style="white-space:pre-wrap">{{ result.before }}</pre>
+    </div>
+    <div>
+      <div class="tag">After: B-tree on (customer_id, order_time)</div>
+      <div class="big" style="color:var(--ok)">{{ result.after_ms }} ms</div>
+      <pre class="sql" style="white-space:pre-wrap">{{ result.after }}</pre>
+    </div>
+  </div>
+  {% if result.before_ms and result.after_ms %}<p><b>{{ (result.before_ms / result.after_ms)|round|int }}× faster</b> by touching a handful of rows instead of scanning all 200,000.</p>{% endif %}
+  <p class="muted">The cost of indexing: data {{ result.size.data_mb }} MB, index {{ result.size.index_mb }} MB. Every INSERT and UPDATE must also maintain the index, which is why write-heavy tables stay lightly indexed.</p>
+</div>
+{% endif %}
+
+<div class="card">
+  <h2>Indexes on <code>orders</code> <span class="tag">from file 04</span></h2>
+  <div class="scroll"><table>
+    <thead><tr><th>Index</th><th>Seq</th><th>Column</th><th>Unique</th><th>Type</th></tr></thead>
+    {% for i in idx %}<tr><td>{{ i.Key_name }}{% if i.Key_name=='PRIMARY' %} <span class="badge">clustered</span>{% endif %}</td><td>{{ i.Seq_in_index }}</td><td>{{ i.Column_name }}</td><td>{{ 'yes' if i.Non_unique==0 else 'no' }}</td><td>{{ i.Index_type }}</td></tr>{% endfor %}
+  </table></div>
+</div>
+{% endblock %}

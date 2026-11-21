@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+{% block title %}Security{% endblock %}
+{% block body %}
+<h1>Security lab</h1>
+<p class="sub">SQL injection attack and defence, plus the role-based access control (RBAC) set up in <code>05_advanced.sql</code> section G.</p>
+
+<div class="card">
+  <h2>SQL injection demo</h2>
+  <p class="warn">Educational demo. "Vulnerable" mode intentionally glues your input into the SQL text, exactly like the vulnerable login in section H. Never write real code this way.</p>
+  <form method="post" style="margin-top:14px">
+    <div class="row">
+      <div><label>Email</label><input name="email" id="email" value="{{ demo.email if demo else '' }}" style="width:100%" autocomplete="off"></div>
+      <div><label>Password</label><input name="pwd" id="pwd" value="{{ demo.pwd if demo else 'anything' }}" style="width:100%" autocomplete="off"></div>
+      <div style="flex:0;min-width:210px"><label>Mode</label>
+        <select name="mode" style="width:100%">
+          <option value="vulnerable" {{ 'selected' if demo and demo.mode=='vulnerable' }}>Vulnerable (string concat)</option>
+          <option value="safe" {{ 'selected' if demo and demo.mode=='safe' }}>Safe (prepared statement)</option>
+        </select></div>
+      <div style="flex:0"><button>Log in</button></div>
+    </div>
+    <div style="margin-top:10px"><span class="muted" style="font-size:12px">Try:</span>
+      <span class="pill" onclick="fill(&quot;' OR '1'='1' -- &quot;)">' OR '1'='1' -- </span>
+      <span class="pill" onclick="fill(&quot;aarav.sharma@example.com' -- &quot;)">aarav.sharma@example.com' -- </span>
+      <span class="pill" onclick="fill('aarav.sharma@example.com','hash_1001x')">real login (wrong style, correct hash)</span>
+    </div>
+  </form>
+
+  {% if demo %}
+  <h3 style="margin-top:18px">Query the server actually ran</h3>
+  <pre class="sql">{{ demo.sql }}</pre>
+  {% if demo.error %}
+    <div class="warn">{{ demo.error }}</div>
+  {% elif demo.rows %}
+    <div class="warn" style="background:{{ 'var(--err-soft)' if demo.mode=='vulnerable' else 'var(--ok-soft)' }};color:{{ 'var(--err)' if demo.mode=='vulnerable' else 'var(--ok)' }}">
+      {% if demo.mode=='vulnerable' and demo.rows|length > 1 %}Logged in as {{ demo.rows|length }} users at once: authentication bypassed.{% else %}Logged in: {{ demo.rows[0].full_name }}.{% endif %}</div>
+    <div class="scroll"><table><thead><tr><th>user_id</th><th>full_name</th><th>user_type</th></tr></thead>
+      {% for r in demo.rows[:8] %}<tr><td>{{ r.user_id }}</td><td>{{ r.full_name }}</td><td>{{ r.user_type }}</td></tr>{% endfor %}</table></div>
+    {% if demo.rows|length > 8 %}<p class="muted">…and {{ demo.rows|length - 8 }} more.</p>{% endif %}
+  {% else %}
+    <div class="flash ok" style="margin:0">0 rows: login rejected.{% if demo.mode=='safe' %} The input was treated as data, never as SQL.{% endif %}</div>
+  {% endif %}
+  {% endif %}
+  <p class="muted" style="font-size:12px;margin-bottom:0">Defences: parameterised queries, hashed passwords (bcrypt in the app layer), least-privilege DB users (below), input validation, never show raw SQL errors to users.</p>
+</div>
+
+<div class="card">
+  <h2>Roles and privileges (least privilege)</h2>
+  <div class="grid g2">
+  {% for role, gs in grants.items() %}
+    <div><h3>{{ role }}</h3><pre class="sql" style="white-space:pre-wrap;word-break:break-word">{% for g in gs %}{{ g }}
+{% endfor %}</pre></div>
+  {% endfor %}
+  </div>
+  <p class="muted" style="font-size:12px;margin-bottom:0">Partners see customers only through the view <code>v_partner_task_sheet</code> (no phone, email or order value), and analysts only through reporting views.</p>
+</div>
+
+<script>
+function fill(e, p){ document.getElementById('email').value = e; if (p !== undefined) document.getElementById('pwd').value = p; }
+</script>
+{% endblock %}

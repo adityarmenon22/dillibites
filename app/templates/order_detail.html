@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+{% from "macros.html" import status, veg %}
+{% block title %}Order #{{ o.order_id }}{% endblock %}
+{% block body %}
+<p><a href="{{ url_for('orders') }}">&larr; All orders</a></p>
+<h1>Order #{{ o.order_id }} {{ status(o.status) }}</h1>
+<p class="sub">{{ o.customer }} ordered from <b>{{ o.restaurant }}</b> on {{ o.order_time|fmt }} · delivering to {{ o.delivery_area }}</p>
+
+{% set flow = ['PLACED','PREPARING','OUT_FOR_DELIVERY','DELIVERED'] %}
+{% if o.status != 'CANCELLED' %}
+<div class="steps">
+  {% for s in flow %}<span class="step {{ 'done' if flow.index(s) < flow.index(o.status) else ('now' if s==o.status else '') }}">{{ s.replace('_',' ') }}</span>{% endfor %}
+</div>
+{% endif %}
+
+<div class="grid g2" style="margin-top:16px">
+  <div class="card">
+    <h2>Items</h2>
+    <table>
+      {% for i in items %}<tr><td>{{ veg(i.is_veg) }}{{ i.item_name }}</td><td class="num">{{ i.quantity }} × {{ i.unit_price|inr }}</td><td class="num">{{ i.line|inr }}</td></tr>{% endfor %}
+      <tr><td colspan="2" class="muted">Subtotal</td><td class="num">{{ o.subtotal|inr }}</td></tr>
+      <tr><td colspan="2" class="muted">Coupon discount</td><td class="num">- {{ o.discount_amt|inr }}</td></tr>
+      <tr><td colspan="2" class="muted">Delivery fee <span class="tag">fn_delivery_fee</span></td><td class="num">{{ o.delivery_fee|inr }}</td></tr>
+      <tr><td colspan="2"><b>Total</b></td><td class="num"><b>{{ o.total_amt|inr }}</b></td></tr>
+    </table>
+    <p class="muted" style="margin:10px 0 0">Payment: {{ o.payment_method|fmt }} · {{ o.pay_status|fmt }}</p>
+    {% if o.status in NEXT %}
+    <div style="display:flex;gap:8px;margin-top:14px">
+      <form method="post" action="{{ url_for('advance', oid=o.order_id) }}"><button>Move to {{ NEXT[o.status].replace('_',' ').title() }}</button></form>
+      {% if o.status in ('PLACED','PREPARING') %}<form method="post" action="{{ url_for('cancel', oid=o.order_id) }}"><button class="danger">Cancel order</button></form>{% endif %}
+    </div>
+    {% endif %}
+  </div>
+
+  <div>
+    <div class="card">
+      <h2>Delivery</h2>
+      {% if d %}
+        <p style="margin:0">Partner: <b>{{ d.partner }}</b> · {{ d.distance_km }} km</p>
+        <p class="muted" style="margin:4px 0 0">Picked up {{ d.picked_at|fmt }}{% if d.delivered_at %} · delivered {{ d.delivered_at|fmt }}{% else %} · on the way{% endif %}</p>
+      {% else %}<p class="muted" style="margin:0">Not assigned yet.</p>{% endif %}
+    </div>
+    <div class="card">
+      <h2>Review</h2>
+      {% if rv %}
+        <p style="margin:0">Restaurant <b>{{ rv.restaurant_rating }}★</b>{% if rv.delivery_rating %} · delivery <b>{{ rv.delivery_rating }}★</b>{% endif %}</p>
+        <p class="muted" style="margin:4px 0 0">"{{ rv.comment }}"</p>
+      {% else %}
+        <form method="post" action="{{ url_for('review', oid=o.order_id) }}">
+          <div class="row">
+            <div><label>Restaurant</label><select name="restaurant_rating">{% for n in [5,4,3,2,1] %}<option>{{ n }}</option>{% endfor %}</select></div>
+            <div><label>Delivery</label><select name="delivery_rating">{% for n in [5,4,3,2,1] %}<option>{{ n }}</option>{% endfor %}</select></div>
+          </div>
+          <div style="margin:10px 0"><label>Comment</label><input name="comment" maxlength="200" style="width:100%"></div>
+          <button class="sm">Submit review</button>
+          {% if o.status != 'DELIVERED' %}<p class="muted" style="font-size:12px;margin:8px 0 0">Try it on an undelivered order: trigger T4 rejects it.</p>{% endif %}
+        </form>
+      {% endif %}
+    </div>
+    <div class="card">
+      <h2>Status history</h2>
+      {% for l in log %}<div>{{ l.changed_at|fmt }} · {{ l.old_status }} &rarr; {{ l.new_status }}</div>
+      {% else %}<span class="muted">No status changes recorded yet.</span>{% endfor %}
+    </div>
+  </div>
+</div>
+{% endblock %}
